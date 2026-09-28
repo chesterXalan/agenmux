@@ -10,7 +10,7 @@ remain compatible for one release cycle; see [Upgrading from agents-mon](#upgrad
 Monitor AI coding agents running in your tmux panes. A sidebar and a status-line
 segment show every detected agent and its state:
 
-- red `!` (blinks; `⣿` in the status line) — **blocked**, waiting for your input (permission prompt, menu)
+- red `⣿` (blinks) — **blocked**, waiting for your input (permission prompt, menu)
 - yellow spinner `⠹` — **working**, actively running
 - green `⣿` (blinks) — **done**, finished while you were elsewhere; clears when you view it
 - green `⣿` — **idle**, waiting at the prompt
@@ -131,8 +131,9 @@ as agent panes.
 
 Session and split-window headers are collapsible branches: `▼` open, `▶` collapsed. `Space`
 or a click on the selected header toggles a branch; `h`/`←` collapses it, or steps from a pane
-to its parent header; `→` expands; `z`/`Z` collapse or expand every branch. A collapsed header
-shows the most urgent status glyph among its hidden agents. Collapse state lasts for the
+to its parent header; `→`, `l`, or `Enter` on a header expands it (on a pane they jump); `z`/`Z` collapse or expand every branch. A collapsed header's
+`▶` takes the color of the most urgent status among its hidden agents (blocked, then done,
+then working), blinking against the accent; it adds no width to the row. Collapse state lasts for the
 daemon's lifetime and survives rescans; search and the User attention filter show every match
 without changing it. A configured chord on any of these keys takes precedence.
 All-pane hierarchy uses indentation without connector glyphs. Nested ordinary panes use a

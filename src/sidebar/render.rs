@@ -399,10 +399,9 @@ impl Sidebar {
         let on = (self.tick / 2).is_multiple_of(2);
         let fg = self.palette.state_fg(state).fg("");
         match state {
-            // Blocked and done both blink; the glyph, not the hue, tells them apart.
             "blocked" => {
                 if on {
-                    format!("{}!{E}[0m", self.palette.blocked_fg.fg("1"))
+                    format!("{fg}⣿{E}[0m")
                 } else {
                     " ".into()
                 }
@@ -512,11 +511,12 @@ impl Sidebar {
         let window_icon = self.palette.done_fg.fg("");
         let mut lines = Vec::new();
         let (mut sel_top, mut sel_bot) = (0usize, 0usize);
-        // `▼` open, `▶` collapsed. A collapsed header carries the most urgent
-        // status its hidden agents have, so a blocked agent stays visible.
+        // `▼` open, `▶` collapsed. A collapsed `▶` takes the colour of the most
+        // urgent status among its hidden agents, adding no width to the row;
+        // it blinks by alternating with the accent rather than vanishing.
         let branch = |id: &str, in_branch: &dyn Fn(&crate::scan::PaneMeta) -> bool| {
             if !self.branch_collapsed(id) {
-                return ("▼", String::new());
+                return format!("{accent}▼");
             }
             let urgent = self
                 .panes
@@ -531,10 +531,13 @@ impl Sidebar {
                     _ => 0,
                 })
                 .filter(|state| *state != "idle");
-            (
-                "▶",
-                urgent.map_or(String::new(), |state| format!(" {}", self.dot(state))),
-            )
+            let on = (self.tick / 2).is_multiple_of(2);
+            match urgent {
+                Some(state) if on => {
+                    format!("{}▶{accent}", self.palette.state_fg(state).fg("1"))
+                }
+                _ => format!("{accent}▶"),
+            }
         };
         // Rename edits the record's own name field; create grows the tree by
         // one placeholder row whose name the user is typing.
@@ -577,34 +580,23 @@ impl Sidebar {
                 VisiblePane::Agent(_) => continue,
                 VisiblePane::Session(i) => {
                     let pane = &self.panes[i];
-                    let (marker, hidden) =
-                        branch(&pane.session_id, &|p| p.session_id == pane.session_id);
+                    let marker = branch(&pane.session_id, &|p| p.session_id == pane.session_id);
                     let name: String = match renaming.filter(|_| selected) {
                         Some(edit) => edit.display_clipped("▏", cols.saturating_sub(4)),
                         None => pane.session_name.chars().take(cols).collect(),
                     };
-                    (
-                        i,
-                        format!(
-                            "{}{accent}{marker} {name}{E}[0m{hidden}",
-                            header_mark(selected)
-                        ),
-                    )
+                    (i, format!("{}{marker} {name}{E}[0m", header_mark(selected)))
                 }
                 VisiblePane::Window(i) => {
                     let pane = &self.panes[i];
-                    let (marker, hidden) =
-                        branch(&pane.window_id, &|p| p.window_id == pane.window_id);
+                    let marker = branch(&pane.window_id, &|p| p.window_id == pane.window_id);
                     let name = match renaming.filter(|_| selected) {
                         Some(edit) => edit.display_clipped("▏", cols.saturating_sub(6)),
                         None => pane.window_name.clone(),
                     };
                     (
                         i,
-                        format!(
-                            "  {}{accent}{marker} {name}{E}[0m{hidden}",
-                            header_mark(selected)
-                        ),
+                        format!("  {}{marker} {name}{E}[0m", header_mark(selected)),
                     )
                 }
                 VisiblePane::Inventory(i) => (i, String::new()),
@@ -1742,17 +1734,47 @@ mod tests {
             assert_eq!(sb.sel, 3, "h on a pane steps out to its window header");
             sb.dispatch_key(Key::Left);
             assert_eq!(sb.visible.len(), 5, "h on an open header collapses it");
+            assert!(
+                sb.animating(),
+                "a working agent under a collapsed header keeps ticks running"
+            );
+            let tick = sb.tick;
+            let tinted = format!("{}▶", sb.palette.working_fg.fg("1"));
+            let header_tinted = |sb: &Sidebar| {
+                sb.last_frame
+                    .lines()
+                    .any(|line| line.contains(&tinted) && line.contains("server"))
+            };
+            // The tint blinks: on for two ticks, then the plain accent.
+            sb.tick = 0;
             let frame = plain(&mut sb);
             assert!(frame.contains("▶ server"), "{frame}");
             assert!(
-                frame
+                header_tinted(&sb),
+                "a collapsed header tints ▶ with its hidden working agent"
+            );
+            sb.tick = 2;
+            plain(&mut sb);
+            assert!(!header_tinted(&sb), "the tint blinks off");
+            sb.tick = tick;
+            assert!(
+                !frame
                     .lines()
                     .any(|line| line.contains("▶ server") && line.contains(|c| SPIN.contains(&c))),
-                "a collapsed header shows its hidden working agent: {frame}"
+                "the tint adds no glyph to the header"
             );
             sb.dispatch_key(Key::Right);
             assert_eq!(sb.visible.len(), 7);
             assert!(plain(&mut sb).contains("▼ server"));
+            sb.dispatch_key(Key::Left);
+            sb.dispatch_key(Key::Jump);
+            assert_eq!(sb.visible.len(), 7, "Enter/l on a header unfolds it");
+            sb.dispatch_key(Key::Jump);
+            assert_eq!(
+                (sb.visible.len(), sb.sel),
+                (7, 3),
+                "Enter/l on an open header stays put instead of jumping"
+            );
             sb.select_index(5);
             sb.dispatch_key(Key::ToggleBranch);
             assert_eq!(

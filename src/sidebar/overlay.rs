@@ -722,7 +722,7 @@ impl Sidebar {
                     (
                         "Space",
                         KeyChord::Printable(b' '),
-                        "fold branch (h/← fold, → open)",
+                        "fold branch (h/← fold, l/→ open)",
                     ),
                     ("z/Z", KeyChord::Printable(b'z'), "fold / open all branches"),
                 ] {
@@ -740,7 +740,7 @@ impl Sidebar {
 {E}[1mstatus{E}[0m\n\
  {idle}⣿{E}[0m  idle\n\
  {working}⠹{E}[0m  working (spinner)\n\
- {blocked}{E}[1m!{E}[0m  blocked, waiting for input (blinks)\n\
+ {blocked}⣿{E}[0m  blocked, waiting for input (blinks)\n\
  {done}⣿{E}[0m  done, not viewed yet (blinks)\n\n\
 {E}[1mkeys{E}[0m\n{keys}\n\
 {muted}press any key to return{E}[0m"

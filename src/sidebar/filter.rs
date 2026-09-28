@@ -364,6 +364,24 @@ impl Sidebar {
             && self.query.trim().is_empty()
     }
 
+    /// Whether the frame animates: a visible agent needs attention, or one is
+    /// hidden under a collapsed header whose `▶` blinks for it.
+    pub(super) fn animating(&self) -> bool {
+        let attention = |state: &str| matches!(state, "working" | "blocked" | "done");
+        self.visible
+            .iter()
+            .any(|&pane| attention(self.visible_state(pane)))
+            || (self.collapsing()
+                && !self.collapsed.is_empty()
+                && self.panes.iter().any(|pane| {
+                    pane.agent_index
+                        .and_then(|i| self.rows.get(i))
+                        .is_some_and(|row| attention(&row.state))
+                        && (self.collapsed.contains(&pane.session_id)
+                            || self.collapsed.contains(&pane.window_id))
+                }))
+    }
+
     pub(super) fn branch_collapsed(&self, id: &str) -> bool {
         self.collapsing() && self.collapsed.contains(id)
     }
@@ -435,6 +453,12 @@ impl Sidebar {
                 }
             }
         }
+    }
+
+    pub(super) fn on_branch_header(&self) -> bool {
+        self.cursor_row()
+            .filter(|_| self.collapsing())
+            .is_some_and(|index| self.branch_id(self.visible[index]).is_some())
     }
 
     pub(super) fn expand_branch(&mut self) {

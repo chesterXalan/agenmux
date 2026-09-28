@@ -611,10 +611,7 @@ fn event_loop(sb: &mut Sidebar) -> bool {
                 scans.observe_output(now);
             }
         }
-        let animating = sb
-            .visible
-            .iter()
-            .any(|&pane| matches!(sb.visible_state(pane), "working" | "blocked" | "done"));
+        let animating = sb.animating();
         // deadline-based tick: held keys keep poll_inputs returning early, so
         // advancing on poll timeout would freeze the spinner during key repeat
         if animating && now >= next_tick {
@@ -741,16 +738,16 @@ impl Sidebar {
     /// Route every logical key through active UI mode. Overlay row maps may
     /// use mouse selection; normal list selection runs only after mode dispatch.
     fn dispatch_key(&mut self, key: Key) -> DispatchResult {
-        let key = match key {
+        let (key, sender) = match key {
             Key::Owned(key, client) => {
                 let owner = self.overlay.as_ref().and_then(mutation_owner);
                 if owner.is_some_and(|owner| owner != client) {
                     self.restore_mutation_input(&client);
                     return DispatchResult::Continue;
                 }
-                *key
+                (*key, Some(client))
             }
-            key => key,
+            key => (key, None),
         };
         if let Some(overlay) = self.overlay.as_ref() {
             if let Key::Sequence(_, Some(client)) = &key {
@@ -817,6 +814,14 @@ impl Sidebar {
             Key::Up => self.move_sel(-1),
             Key::WheelUp => self.scroll_viewport(-1),
             Key::WheelDown => self.scroll_viewport(1),
+            // On a branch header, Enter/l unfold like Right. The jump binding
+            // already left the sidebar key table, so hand the sender back.
+            Key::Jump if self.on_branch_header() => {
+                self.expand_branch();
+                if let Some(client) = &sender {
+                    self.restore_mutation_input(client);
+                }
+            }
             Key::Jump => {
                 if self.jump() {
                     return DispatchResult::Break;
