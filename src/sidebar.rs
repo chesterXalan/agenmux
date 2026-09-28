@@ -14,6 +14,7 @@ use crate::conf::AgentConf;
 use crate::procs::IdentCache;
 use crate::scan::{self, PaneMeta, PaneRow};
 use crate::tmux::{command, command_status, PendingChanges, Tmux, TmuxError};
+use std::collections::HashSet;
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -198,9 +199,11 @@ pub struct Sidebar {
     tracker: Tracker,
     rows: Vec<PaneRow>, // complete debounced view-model; never filter cache/status
     panes: Vec<PaneMeta>, // latest complete sidebar-excluded inventory
-    visible: Vec<VisiblePane>, // selectable panes; headers never enter this projection
+    visible: Vec<VisiblePane>, // selectable rows, including all-pane session/window headers
     query: ui::TextEdit,
     attention_filter: bool,
+    // Collapsed session and window ids ("$n"/"@n"): stable across rescans.
+    collapsed: HashSet<String>,
     search_focused: bool,
     key_sequence: KeySequence,
     refresh_requested: bool,
@@ -375,6 +378,7 @@ fn new_sidebar(
         visible: Vec::new(),
         query: ui::TextEdit::from(""),
         attention_filter: false,
+        collapsed: HashSet::new(),
         search_focused: false,
         key_sequence: KeySequence::default(),
         refresh_requested: false,
@@ -607,10 +611,7 @@ fn event_loop(sb: &mut Sidebar) -> bool {
                 scans.observe_output(now);
             }
         }
-        let animating = sb
-            .visible
-            .iter()
-            .any(|&pane| matches!(sb.visible_state(pane), "working" | "blocked" | "done"));
+        let animating = sb.animating();
         // deadline-based tick: held keys keep poll_inputs returning early, so
         // advancing on poll timeout would freeze the spinner during key repeat
         if animating && now >= next_tick {
@@ -737,16 +738,16 @@ impl Sidebar {
     /// Route every logical key through active UI mode. Overlay row maps may
     /// use mouse selection; normal list selection runs only after mode dispatch.
     fn dispatch_key(&mut self, key: Key) -> DispatchResult {
-        let key = match key {
+        let (key, sender) = match key {
             Key::Owned(key, client) => {
                 let owner = self.overlay.as_ref().and_then(mutation_owner);
                 if owner.is_some_and(|owner| owner != client) {
                     self.restore_mutation_input(&client);
                     return DispatchResult::Continue;
                 }
-                *key
+                (*key, Some(client))
             }
-            key => key,
+            key => (key, None),
         };
         if let Some(overlay) = self.overlay.as_ref() {
             if let Key::Sequence(_, Some(client)) = &key {
@@ -813,6 +814,14 @@ impl Sidebar {
             Key::Up => self.move_sel(-1),
             Key::WheelUp => self.scroll_viewport(-1),
             Key::WheelDown => self.scroll_viewport(1),
+            // On a branch header, Enter/l unfold like Right. The jump binding
+            // already left the sidebar key table, so hand the sender back.
+            Key::Jump if self.on_branch_header() => {
+                self.expand_branch();
+                if let Some(client) = &sender {
+                    self.restore_mutation_input(client);
+                }
+            }
             Key::Jump => {
                 if self.jump() {
                     return DispatchResult::Break;
@@ -825,6 +834,11 @@ impl Sidebar {
             Key::ToggleAttention => self.toggle_attention_filter(),
             Key::AllStates => self.clear_filter(),
             Key::TogglePanes => self.toggle_all_panes(),
+            Key::ToggleBranch => self.toggle_branch(),
+            Key::Left => self.collapse_branch(),
+            Key::Right => self.expand_branch(),
+            Key::CollapseAll => self.set_all_collapsed(true),
+            Key::ExpandAll => self.set_all_collapsed(false),
             Key::Quit => {
                 if self.daemon.is_none() {
                     // Popup/tty mode owns stdin, so q/Ctrl-C/Ctrl-D closes it.
@@ -848,8 +862,6 @@ impl Sidebar {
             }
             Key::Owned(_, _)
             | Key::Sequence(_, _)
-            | Key::Left
-            | Key::Right
             | Key::Home
             | Key::End
             | Key::Delete

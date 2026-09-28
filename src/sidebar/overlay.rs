@@ -665,7 +665,7 @@ impl Sidebar {
         let (cols, rows) = self.render_size();
         let top_bar = TopBar::new(&self.palette, self.plugin_selected, self.header_inherited);
         let header = top_bar.foreground("1");
-        let muted = self.palette.muted_fg.fg("2");
+        let muted = self.palette.muted_fg.fg("");
         let idle = self.palette.idle_fg.fg("");
         let working = self.palette.working_fg.fg("");
         let blocked = self.palette.blocked_fg.fg("");
@@ -715,6 +715,19 @@ impl Sidebar {
                     let prefix = binding.sequence.as_bytes()[0];
                     if action_for(&self.normal_keys, KeyChord::Printable(prefix)).is_none() {
                         keys.push((binding.sequence, binding.label));
+                    }
+                }
+                // Fixed all-pane tree keys, listed while no action claims them.
+                for (label, chord, what) in [
+                    (
+                        "Space",
+                        KeyChord::Printable(b' '),
+                        "fold branch (h/← fold, l/→ open)",
+                    ),
+                    ("z/Z", KeyChord::Printable(b'z'), "fold / open all branches"),
+                ] {
+                    if action_for(&self.normal_keys, chord).is_none() {
+                        keys.push((label.into(), what.into()));
                     }
                 }
                 let keys: String = keys

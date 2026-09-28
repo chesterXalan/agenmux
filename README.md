@@ -123,15 +123,23 @@ the agent-only list. Press `.` in the sidebar to toggle between the two live;
 that view toggle is not written to config, so a reload restores the configured
 default. All-pane mode renders sessions, windows, and panes in tmux
 order. A pane in a split window shows its pane title when set, otherwise its
-running command; a single-pane window shows its window name. A split window gets an accent-colored ` name` header and nested pane rows. A
+running command; a single-pane window shows its window name. A split window gets an accent-colored `▼ name` header and nested pane rows. A
 single ordinary-pane window collapses into a selectable muted ` name` row; a single-agent
-window retains its compact agent row. Pane rows and agent description rows are selectable;
-session and split-window headers provide context. `Enter` and repeated clicks can jump to
-ordinary panes as well as agent panes.
+window retains its compact agent row. Session and split-window headers, pane rows, and agent
+description rows are selectable. `Enter` and repeated clicks can jump to ordinary panes as well
+as agent panes.
+
+Session and split-window headers are collapsible branches: `▼` open, `▶` collapsed. `Space`
+or a click on the selected header toggles a branch; `h`/`←` collapses it, or steps from a pane
+to its parent header; `→` expands a header; `l` or `Enter` on a header expands it too, but on a pane (or on a header while filtering) they jump; `z`/`Z` collapse or expand every branch. A collapsed header's
+`▶` takes the color of the most urgent status among its hidden agents (blocked, then done,
+then working), blinking against the accent; it adds no width to the row. Collapse state lasts for the
+daemon's lifetime and survives rescans; search and the User attention filter show every match
+without changing it. A configured chord on any of these keys takes precedence.
 All-pane hierarchy uses indentation without connector glyphs. Nested ordinary panes use a
 done-colored `▢ command` row; when selected, its full row uses `theme.colors.pane_bg`. Agent
 rows keep their state styling and show the animated status glyph, agent name in its original
-style, then pane command. Agent descriptions stay on the next indented line. An ordinary pane
+style, then pane command. Agent descriptions stay on the next indented line, prefixed with `↳`. An ordinary pane
 running `nvim` shows the Neovim icon (`nf-linux-neovim`), and one running `lazygit` the git
 icon (`nf-dev-git`), in place of its window or pane glyph.
 
