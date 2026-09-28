@@ -326,11 +326,59 @@ pub(crate) fn pane_add_record(
         let _ = tmux::command_status(&["set-option", "-gu", &layout_option]);
         return 1;
     }
+    keep_window_name(&win);
     created.push((pane.clone(), win));
     let _ = tmux::command_status(&["set-option", "-p", "-t", &pane, "allow-rename", "off"]);
     let _ = tmux::command_status(&["set-option", "-p", "-t", &pane, "@agenmux", "1"]);
     let _ = tmux::command_status(&["select-pane", "-t", &pane, "-T", "agenmux"]);
     0
+}
+
+const RENAME_FORMAT: &str = "@agenmux-rename-format";
+
+/// automatic-rename names a window after its active pane, so focusing the
+/// sidebar would rename every unnamed window "agenmux". While the sidebar is
+/// active, evaluate the window's own format on the pane focused before it.
+// ponytail: a window-local format the user set is reset to the global one on
+// teardown; save and restore it if anyone sets per-window formats.
+fn keep_window_name(win: &str) {
+    if tmux::command(&["show-options", "-wqv", "-t", win, RENAME_FORMAT])
+        .is_ok_and(|saved| !saved.trim().is_empty())
+    {
+        return;
+    }
+    let Ok(format) = tmux::command(&[
+        "display-message",
+        "-p",
+        "-t",
+        win,
+        "#{automatic-rename-format}",
+    ]) else {
+        return;
+    };
+    let _ = tmux::command_status(&[
+        "set-option",
+        "-w",
+        "-t",
+        win,
+        RENAME_FORMAT,
+        format.trim_end(),
+    ]);
+    let own = format!("#{{E:{RENAME_FORMAT}}}");
+    let wrapped = format!("#{{?#{{@agenmux}},#{{P:#{{?pane_last,{own},}}}},{own}}}");
+    let _ = tmux::command_status(&[
+        "set-option",
+        "-w",
+        "-t",
+        win,
+        "automatic-rename-format",
+        &wrapped,
+    ]);
+}
+
+fn restore_window_name(win: &str) {
+    let _ = tmux::command_status(&["set-option", "-wu", "-t", win, "automatic-rename-format"]);
+    let _ = tmux::command_status(&["set-option", "-wu", "-t", win, RENAME_FORMAT]);
 }
 
 pub fn pane_pin() -> i32 {
@@ -443,6 +491,7 @@ fn layout_size(layout: &str) -> Option<&str> {
 }
 
 pub(crate) fn restore_layout(window: &str) {
+    restore_window_name(window);
     let option = format!("@agenmux-layout-{window}");
     let legacy_option = format!("@agents-mon-layout-{window}");
     let mut layout = tmux::command(&["show-option", "-gqv", &option]).unwrap_or_default();

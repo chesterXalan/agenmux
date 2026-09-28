@@ -1264,8 +1264,12 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("agenmux-theme-frames-{}", std::process::id()));
         std::fs::create_dir_all(dir.join("target/release")).unwrap();
         std::fs::write(dir.join("target/release/.agenmux-tags"), "v9.9.9\nv0.0.1\n").unwrap();
-        let settings =
-            crate::app_config::resolve(&Default::default(), &Default::default()).unwrap();
+        // The fixture's first half is the agent-only, read-only sidebar.
+        let file = crate::app_config::parse(
+            "[display]\nshow_all_panes=false\n[tmux_management]\nenabled=false",
+        )
+        .unwrap();
+        let settings = crate::app_config::resolve(&file, &Default::default()).unwrap();
         let mut sb = new_sidebar(
             Tmux::connect().unwrap_or_else(|e| panic!("{e}")),
             dir.clone(),
@@ -2125,8 +2129,8 @@ mod tests {
             .unwrap()
             .replace_all(&help, "");
         for (sequence, label) in [
-            ("e", "nvim"),
             ("o", "optional launchers"),
+            ("oe", "nvim"),
             ("og", "lazygit"),
             ("ot", "terminal"),
         ] {
@@ -2141,15 +2145,15 @@ mod tests {
         sb.key_sequence.clear();
         sb.render(true);
         let launcher_footer = sb.last_frame.clone();
-        assert!(launcher_footer.contains("e nvim"), "{launcher_footer}");
         assert!(launcher_footer.contains("o launch"), "{launcher_footer}");
+        assert!(!launcher_footer.contains("oe nvim"), "{launcher_footer}");
         assert!(launcher_footer.contains("s settings"), "{launcher_footer}");
         assert!(!launcher_footer.contains("og lazygit"), "{launcher_footer}");
         let ansi = regex::Regex::new(r"\x1b\[[0-9;]*[A-Za-z]").unwrap();
         let plain = ansi.replace_all(&launcher_footer, "");
         let lines: Vec<_> = plain.lines().collect();
         assert_eq!(lines.len(), 38, "{plain}");
-        assert!(!lines[1].contains("e nvim"), "hint leaked above the list");
+        assert!(!lines[1].contains("o launch"), "hint leaked above the list");
         let footer_line = launcher_footer
             .lines()
             .find(|line| line.contains("› ? help · s settings"))
@@ -2161,10 +2165,10 @@ mod tests {
             "help and settings are the first hints: {footer_content}"
         );
         assert!(
-            footer_plain.contains("e nvim") && footer_plain.contains("o launchers"),
+            footer_plain.contains("o launchers") && !footer_plain.contains("nvim"),
             "other launcher hints follow settings: {footer_content}"
         );
-        assert_eq!(ansi.replace_all(footer_content, "").chars().count(), 44);
+        assert_eq!(ansi.replace_all(footer_content, "").chars().count(), 35);
         assert!(
             footer_content
                 .replace(&format!("{E}[2G"), "")

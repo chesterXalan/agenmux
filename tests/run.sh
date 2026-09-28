@@ -726,7 +726,7 @@ if [ "$fail" -eq 0 ] && command -v tmux >/dev/null && [ -x "$BIN" ]; then
   live_frame=""
   for _ in $(seq 1 40); do
     live_frame="$($T capture-pane -p -t "$live_sidebar")"
-    printf '%s\n' "$live_frame" | grep -Fq agents && break
+    printf '%s\n' "$live_frame" | grep -Fq agenmux && break
     sleep 0.1
   done
   $T new-window -t t: "sh -c 'sleep 1; exec \"$tmp/claude\"'"
@@ -793,7 +793,7 @@ if [ "$fail" -eq 0 ] && command -v tmux >/dev/null && [ -x "$BIN" ]; then
   done
   if [ "$mirrors" -eq 1 ] && [ "$readers" -eq 1 ] && [ "$focus_kept" -eq 1 ] &&
     [ "$keys_ok" -eq 1 ] && [ "$control_ok" -eq 1 ] && [ "$stayed" -gt 0 ] &&
-    printf '%s\n' "$live_frame" | grep -Fq agents &&
+    printf '%s\n' "$live_frame" | grep -Fq agenmux &&
     [ "$before" = "$after" ] && [ "$new_ok" -eq 1 ] &&
     printf '%s\n' "$delayed_frame" | grep -Fq claude &&
     [ "$raced" -eq 1 ] && [ "$widths" = 45 ] && [ "$optw" = 45 ] &&

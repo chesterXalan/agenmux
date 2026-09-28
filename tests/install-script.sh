@@ -124,5 +124,20 @@ check no-dotfile "$([ -e "$home/.tmux.conf" ] || echo absent)" absent
 # an absolute XDG_CONFIG_HOME moves the config root, like the engine does
 XDG_CONFIG_HOME="$home/xdg" sh "$DIR/install.sh" >/dev/null
 check xdg-config-dir "$([ -d "$home/xdg/agenmux/agents" ] && echo yes)" yes
+check no-label-unasked "$([ -e "$home/xdg/agenmux/config.toml" ] || echo absent)" absent
+
+# the font answer lands in [display]: a new table, under an existing one, and
+# never over a label the user already chose
+app="$home/labels/agenmux/config.toml"
+XDG_CONFIG_HOME="$home/labels" AGENMUX_AGENT_LABEL=icon sh "$DIR/install.sh" >/dev/null
+check label-new "$(cat "$app")" "$(printf '[display]\nagent_label = "icon"')"
+printf '[behavior]\nnotifications = false\n[display]\nmode = "popup"\n' >"$app"
+XDG_CONFIG_HOME="$home/labels" AGENMUX_AGENT_LABEL=text sh "$DIR/install.sh" >/dev/null
+check label-existing-table "$(cat "$app")" \
+  "$(printf '[behavior]\nnotifications = false\n[display]\nagent_label = "text"\nmode = "popup"')"
+XDG_CONFIG_HOME="$home/labels" AGENMUX_AGENT_LABEL=icon sh "$DIR/install.sh" >/dev/null
+check label-kept "$(grep -c agent_label "$app") $(grep agent_label "$app")" '1 agent_label = "text"'
+check label-no-tmp "$(find "$home/labels" -name '*.agenmux.tmp' | wc -l | tr -d ' ')" 0
+check label-invalid "$(XDG_CONFIG_HOME="$home/labels" AGENMUX_AGENT_LABEL=big sh "$DIR/install.sh" >/dev/null 2>&1 || echo refused)" refused
 
 exit "$fail"

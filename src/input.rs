@@ -1024,9 +1024,9 @@ mod tests {
 
     fn config(management_enabled: bool) -> crate::app_config::AppConfig {
         let source = if management_enabled {
-            "[tmux_management]\nenabled = true"
-        } else {
             ""
+        } else {
+            "[tmux_management]\nenabled = false"
         };
         let file = crate::app_config::parse(source).unwrap();
         crate::app_config::resolve(&file, &Default::default()).unwrap()
@@ -1132,17 +1132,12 @@ mod tests {
         assert!(matches!(read_search_key(fds[0], &custom.search), Key::Text(s) if s == "n"));
         let enabled = config(true);
         let disabled = config(false);
-        feed(b"e");
-        assert!(matches!(
-            read_key_with_config(fds[0], &enabled.normal, &enabled),
-            Key::Sequence('e', None)
-        ));
         feed(b"o");
         assert!(matches!(
             read_key_with_config(fds[0], &enabled.normal, &enabled),
             Key::Sequence('o', None)
         ));
-        feed(b"e");
+        feed(b"o");
         assert!(matches!(
             read_key_with_config(fds[0], &disabled.normal, &disabled),
             Key::Other
@@ -1302,7 +1297,7 @@ command = "fish"
         let enabled = crate::app_config::resolve(&file, &Default::default()).unwrap();
         let disabled = crate::app_config::resolve(
             &crate::app_config::parse(
-                "[quick_launchers.terminal]\nsequence='zt'\nlabel='terminal'\ncommand='fish'",
+                "[tmux_management]\nenabled=false\n[quick_launchers.terminal]\nsequence='zt'\nlabel='terminal'\ncommand='fish'",
             )
             .unwrap(),
             &Default::default(),
@@ -1312,6 +1307,14 @@ command = "fish"
         let timeout = Duration::from_secs(1);
         let mut sequence = KeySequence::default();
 
+        assert!(matches!(
+            sequence.push('o', None, start, timeout, &enabled),
+            SequenceResult::Pending
+        ));
+        assert_eq!(
+            sequence.continuations(&enabled),
+            vec![(('g'), "lazygit".into()), (('e'), "nvim".into())]
+        );
         assert!(matches!(
             sequence.push('e', None, start, timeout, &enabled),
             SequenceResult::Match(
@@ -1323,10 +1326,6 @@ command = "fish"
             sequence.push('o', None, start, timeout, &enabled),
             SequenceResult::Pending
         ));
-        assert_eq!(
-            sequence.continuations(&enabled),
-            vec![(('g'), "lazygit".into())]
-        );
         assert!(matches!(
             sequence.push('g', None, start, timeout, &enabled),
             SequenceResult::Match(
@@ -1350,7 +1349,7 @@ command = "fish"
             ) if id == "terminal"
         ));
         assert!(matches!(
-            sequence.push('e', None, start, timeout, &disabled),
+            sequence.push('o', None, start, timeout, &disabled),
             SequenceResult::Miss
         ));
         assert!(matches!(

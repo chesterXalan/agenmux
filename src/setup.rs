@@ -899,8 +899,8 @@ mod tests {
 
     #[test]
     fn bindings_follow_the_resolved_keymaps() {
-        let defaults = config("");
-        let keys = key_bindings(&defaults);
+        let read_only = config("[tmux_management]\nenabled = false");
+        let keys = key_bindings(&read_only);
         let find = |table: &str, key: &str| {
             keys.iter()
                 .find(|(t, k, _)| *t == table && k == key)
@@ -966,7 +966,7 @@ mod tests {
         assert_eq!(find(NORMAL_TABLE, "c"), None);
         assert_eq!(find(NORMAL_TABLE, "d"), None);
         assert_eq!(find(NORMAL_TABLE, "r"), None);
-        let enabled = config("[tmux_management]\nenabled = true");
+        let enabled = config("");
         let enabled_keys = key_bindings(&enabled);
         for key in ["c", "d", "g", "r"] {
             assert!(enabled_keys
@@ -1063,9 +1063,9 @@ mod tests {
             Some(key_command("versions", NORMAL_TABLE, true).as_str())
         );
 
-        assert_ne!(nav_version(&defaults), nav_version(&custom));
-        assert_eq!(nav_version(&defaults), nav_version(&config("version = 1")));
-        assert!(nav_version(&defaults).starts_with("16."));
+        assert_ne!(nav_version(&enabled), nav_version(&custom));
+        assert_eq!(nav_version(&enabled), nav_version(&config("version = 1")));
+        assert!(nav_version(&enabled).starts_with("16."));
     }
 
     #[test]
@@ -1079,7 +1079,7 @@ mod tests {
                 .find(|(listed_table, listed_key, _)| *listed_table == table && listed_key == key)
                 .map(|(_, _, command)| command.as_str())
         }
-        let disabled = key_bindings(&config(""));
+        let disabled = key_bindings(&config("[tmux_management]\nenabled = false"));
         assert_eq!(find(&disabled, NORMAL_TABLE, "e"), None);
         assert_eq!(find(&disabled, NORMAL_TABLE, "o"), None);
         assert!(
@@ -1098,8 +1098,9 @@ mod tests {
             "[tmux_management]\nenabled=true\n[quick_launchers.terminal]\nsequence='ot'\nlabel='terminal'\ncommand='fish'",
         );
         let keys = key_bindings(&enabled);
+        assert_eq!(find(&keys, NORMAL_TABLE, "e"), None);
         assert_eq!(
-            find(&keys, NORMAL_TABLE, "e"),
+            find(&keys, SEQUENCE_TABLE, "e"),
             Some(key_command("sequence-65", NORMAL_TABLE, false).as_str())
         );
         assert_eq!(
