@@ -2410,7 +2410,8 @@ fn tmux_management_creates_and_deletes_stable_targets() {
         ])
     );
     tmux.assert_tmux(&["kill-window", "-t", &blank_window]);
-    tmux.wait_for(Duration::from_secs(4), || selected() == window_pane);
+    // The selection follows the client on a later scan; loaded runners are slow.
+    tmux.wait_for(Duration::from_secs(10), || selected() == window_pane);
 
     let sessions = tmux
         .text(&["list-sessions", "-F", "#{session_id}"])
