@@ -2344,6 +2344,48 @@ fn tmux_management_creates_and_deletes_stable_targets() {
         .text(&["list-windows", "-a", "-F", "#{window_id}"])
         .lines()
         .count();
+    let window_count = || {
+        tmux.text(&["list-windows", "-a", "-F", "#{window_id}"])
+            .lines()
+            .count()
+    };
+
+    // A blank name keeps tmux's automatic naming, taken from the real pane
+    // rather than the focused sidebar running the agenmux binary. It runs
+    // while the session has one window, so killing it returns the client to
+    // the initial pane on every tmux build.
+    send_sequence("cc");
+    sidebar_shows("▼ ▏");
+    assert_success(tmux.bin(&["key", "enter"]), "accept blank window name");
+    tmux.wait_for(Duration::from_secs(4), || window_count() == windows + 1);
+    assert_on_sidebar();
+    let blank_window = client_value("#{window_id}");
+    let blank_pane = tmux.text(&[
+        "list-panes",
+        "-t",
+        &blank_window,
+        "-f",
+        "#{!=:#{pane_title},agenmux}",
+        "-F",
+        "#{pane_id}",
+    ]);
+    // tmux re-evaluates automatic names about every 500 ms.
+    thread::sleep(Duration::from_millis(1500));
+    assert_eq!(
+        client_value("#{window_name}"),
+        tmux.text(&[
+            "display-message",
+            "-p",
+            "-t",
+            &blank_pane,
+            "#{pane_current_command}"
+        ])
+    );
+    tmux.assert_tmux(&["kill-window", "-t", &blank_window]);
+    tmux.wait_for(Duration::from_secs(4), || window_count() == windows);
+    // The selection follows the client on a later scan; loaded runners are slow.
+    tmux.wait_for(Duration::from_secs(10), || selected() == initial);
+
     send_sequence("cc");
     sidebar_shows("▼ ▏");
     send_text("w");
@@ -2371,45 +2413,6 @@ fn tmux_management_creates_and_deletes_stable_targets() {
         ]),
         cwd.canonicalize().unwrap().to_string_lossy()
     );
-    tmux.wait_for(Duration::from_secs(4), || selected() == window_pane);
-
-    // A blank name keeps tmux's automatic naming, taken from the real pane
-    // rather than the focused sidebar running the agenmux binary.
-    send_sequence("cc");
-    tmux.wait_for(Duration::from_secs(4), || {
-        client_value("#{client_key_table}") == "agenmux-search"
-    });
-    assert_success(tmux.bin(&["key", "enter"]), "accept blank window name");
-    tmux.wait_for(Duration::from_secs(4), || {
-        tmux.text(&["list-windows", "-a", "-F", "#{window_id}"])
-            .lines()
-            .count()
-            == windows + 2
-    });
-    assert_on_sidebar();
-    let blank_window = client_value("#{window_id}");
-    let blank_pane = tmux.text(&[
-        "list-panes",
-        "-t",
-        &blank_window,
-        "-f",
-        "#{!=:#{pane_title},agenmux}",
-        "-F",
-        "#{pane_id}",
-    ]);
-    // tmux re-evaluates automatic names about every 500 ms.
-    thread::sleep(Duration::from_millis(1500));
-    assert_eq!(
-        client_value("#{window_name}"),
-        tmux.text(&[
-            "display-message",
-            "-p",
-            "-t",
-            &blank_pane,
-            "#{pane_current_command}"
-        ])
-    );
-    tmux.assert_tmux(&["kill-window", "-t", &blank_window]);
     tmux.wait_for(Duration::from_secs(4), || selected() == window_pane);
 
     let sessions = tmux
