@@ -2,15 +2,23 @@
 
 ## What's changed
 
-v0.7.0 makes agenmux a tmux manager first: the sidebar opens on every session,
-window, and pane, with agent status inline and management actions enabled.
+v0.7.0 adds collapsible sessions and windows to the sidebar and makes agenmux
+a tmux manager first: it opens on every session, window, and pane, with agent
+status inline and management actions enabled.
+
+### Collapsible sessions and windows
+
+- Session and split-window headers fold and unfold, so a long tmux tree shrinks to the sessions you care about ([#143](https://github.com/snirt/agenmux/pull/143)).
+- `Space` or a click on the selected header toggles it. `h`/`←` folds a header, or steps from a pane to its parent header; `→` unfolds it. `z` folds every branch and `Z` unfolds them all.
+- A folded header shows `▶` in the color of the most urgent agent hidden inside it (blocked, then done, then working), so nothing needing attention disappears.
+- Fold state survives rescans until the sidebar daemon restarts, and search and the attention filter show every match without changing it.
+- Headers use `▼`/`▶` markers instead of a Nerd Font icon, secondary text is easier to read, and prompt previews start with `↳`.
 
 ### Tmux manager by default
 
 - The sidebar shows all sessions, windows, and panes by default, and create, rename, and delete actions are enabled; deletes still confirm inline ([#145](https://github.com/snirt/agenmux/pull/145)).
-- Set `display.show_all_panes = false` for the agent-only list and `tmux_management.enabled = false` for a read-only sidebar; each works independently ([#145](https://github.com/snirt/agenmux/pull/145)).
-- The nvim quick launcher moved from `e` to `oe`, so every launcher shares the `o` prefix ([#145](https://github.com/snirt/agenmux/pull/145)).
-- Session and split-window headers are collapsible branches, with `▼`/`▶` markers that tint to the most urgent hidden agent, and secondary text is easier to read ([#143](https://github.com/snirt/agenmux/pull/143)).
+- Set `display.show_all_panes = false` for the agent-only list and `tmux_management.enabled = false` for a read-only sidebar; each works independently.
+- The nvim quick launcher moved from `e` to `oe`, so every launcher shares the `o` prefix.
 
 ### Fixes
 
