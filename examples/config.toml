@@ -7,7 +7,7 @@ version = 1
 
 [display]
 mode = "split"        # split | popup
-show_all_panes = false
+show_all_panes = true  # false: agent-only list
 show_frame = true      # whole-pane Agenmux frame
 sidebar_width = 30    # cells, 1..=10000
 popup_width = 40
@@ -19,14 +19,15 @@ notifications = true
 # hide_windows = "agents*" # filter the prefix+w picker; omitted leaves it alone
 
 [tmux_management]
-# cc/cs create, dd deletes the selected session/window/pane, r renames
-enabled = false
-confirm_delete = true
+# cc/cs create, dd deletes the selected session/window/pane, r renames.
+# Set enabled = false for a read-only sidebar.
+enabled = true
+confirm_delete = true  # keep the inline y/n prompt before dd deletes
 
 # Quick launchers are available only when tmux management is enabled.
 # These entries show the built-in defaults and can be omitted when unchanged.
 [quick_launchers.nvim]
-sequence = "e"
+sequence = "oe"
 label = "nvim"
 command = "nvim"
 args = []

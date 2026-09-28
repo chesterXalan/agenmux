@@ -257,9 +257,9 @@
         <div>
           <span class="feat-head">whole-tmux navigator</span>
           <p>
-            Press <kbd>.</kbd> (or set <code>display.show_all_panes</code>) and
-            the sidebar lists every session, window and pane in tmux order —
-            jump to any of them, not just agents.
+            The sidebar lists every session, window and pane in tmux order,
+            with agent status inline — jump to any of them, not just agents.
+            Press <kbd>.</kbd> to toggle the agents-only list.
           </p>
         </div>
         <div>
@@ -271,13 +271,13 @@
           </p>
         </div>
         <div>
-          <span class="feat-head">opt-in tmux management</span>
+          <span class="feat-head">tmux management</span>
           <p>
-            Enable <code>tmux_management</code> to create (<kbd>cc</kbd>/<kbd
+            Create (<kbd>cc</kbd>/<kbd
               >cs</kbd
             >), rename (<kbd>r</kbd>) and delete (<kbd>dd</kbd>) sessions,
-            windows and panes from the sidebar. By default, deletes confirm
-            inline and never destroy a session implicitly.
+            windows and panes from the sidebar. Deletes confirm inline and
+            never destroy a session implicitly.
           </p>
         </div>
         <div>
@@ -289,6 +289,7 @@
         </div>
       </div>
       <pre><code>[display]
+# defaults shown; set false for the agent-only, read-only sidebar
 show_all_panes = true      # or press `.` to toggle live
 
 [tmux_management]
@@ -378,7 +379,7 @@ confirm_delete = true</code></pre>
         <div>
           <span class="k"
             ><kbd>cc</kbd> <kbd>cs</kbd> <kbd>dd</kbd> <kbd>r</kbd></span
-          ><span>manage tmux <span class="dim">(opt-in)</span></span>
+          ><span>manage tmux</span>
         </div>
         <div>
           <span class="k"><kbd>u</kbd></span
@@ -749,7 +750,7 @@ confirm_delete = true</code></pre>
         },
         {
           caption:
-            "press . and the sidebar becomes a full tmux navigator — every session, window, pane. management is opt-in and asks before deleting",
+            "a full tmux navigator by default — every session, window, pane; . toggles agents only. management asks before deleting",
           steps: [
             [
               1400,

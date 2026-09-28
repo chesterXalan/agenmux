@@ -5,7 +5,8 @@
 # reloads a running tmux so
 # agenmux.tmux fetches the verified engine. Re-run to update. Override paths
 # with AGENMUX_DIR and AGENMUX_TMUX_CONF. Without a terminal (CI, containers)
-# every question takes its default: keys A and a, write yes.
+# every question takes its default: keys A and a, write yes, and the agent
+# label is left to config.toml unless AGENMUX_AGENT_LABEL names one.
 set -eu
 
 DIR="${AGENMUX_DIR:-$HOME/.tmux/plugins/agenmux}"
@@ -70,9 +71,17 @@ main() {
   printf '%s ⠈⠻⠶⠶⠿⠟ ⠙⠷⠶⠾⠃ ⠘⠷⠶⠶⠃ ⠿  ⠸⠇⠿⠃ %s⠸⠇ ⠸⠇ ⠻⠶⠶⠟ %s⠰⠟⠁ %s ⠙⠷%s\n' "$green" "$dim" "$green" "$dim" "$reset"
   printf '%s        ⠿⣤⣤⣴⠟%s\n' "$green" "$reset"
   printf '\n  %s⣿ tmux sidebar for AI coding agents%s\n\n' "$dim" "$reset"
+  # Only the user's eyes can tell whether the terminal renders Nerd Font
+  # glyphs, so the answer picks the agent row label.
+  label="${AGENMUX_AGENT_LABEL:-}"
+  case "$label" in "" | icon | icon-text | text) ;; *) die "AGENMUX_AGENT_LABEL must be icon, icon-text or text" ;; esac
   if [ -n "$interactive" ]; then
     printf '  %sFont check:%s ⣿  ⠹    ▢\n' "$bold" "$reset"
-    printf '  If  is a box or blank, configure a Nerd Font in your terminal.\n\n'
+    printf '  If  is a box or blank, configure a Nerd Font in your terminal.\n'
+    if [ -z "$label" ]; then
+      if ask "Does  show as an icon?" y; then label=icon; else label=text; fi
+    fi
+    printf '\n'
   fi
 
   for cmd in git tmux bash; do
@@ -114,6 +123,28 @@ main() {
   esac
   mkdir -p "$CFG/agents" || die "cannot create $(tilde "$CFG")"
   ok config "$(tilde "$CFG")/ (config.toml optional, agents/ for overrides)"
+  if [ -n "$label" ]; then
+    app="$CFG/config.toml"
+    # ponytail: line-based TOML edit; an inline `display = { ... }` table is
+    # not recognised and would end up with a duplicate [display].
+    if [ -f "$app" ] && grep -q '^[[:space:]]*\(display\.\)\{0,1\}agent_label[[:space:]]*=' "$app"; then
+      skip labels "agent_label already set in $(tilde "$app")"
+    else
+      if [ -f "$app" ] && grep -q '^[[:space:]]*\[display\][[:space:]]*$' "$app"; then
+        tmp="$app.agenmux.tmp"
+        { cp -p "$app" "$tmp" &&
+          label="$label" awk '{ print } /^[[:space:]]*\[display\][[:space:]]*$/ && !done { print "agent_label = \"" ENVIRON["label"] "\""; done = 1 }' \
+            "$app" >"$tmp" && mv "$tmp" "$app"; } || {
+          rm -f "$tmp"
+          die "could not edit $(tilde "$app")"
+        }
+      else
+        { [ -s "$app" ] && printf '\n'; printf '[display]\nagent_label = "%s"\n' "$label"; } >>"$app" ||
+          die "could not write $(tilde "$app")"
+      fi
+      ok labels "agent_label = \"$label\" in $(tilde "$app")"
+    fi
+  fi
 
   if [ -n "${AGENMUX_TMUX_CONF:-}" ]; then
     CONF="$AGENMUX_TMUX_CONF"
@@ -181,8 +212,38 @@ $plugin"
   fi
 
   if tmux list-sessions >/dev/null 2>&1; then
+    # With someone watching, install the engine here with visible progress,
+    # under the plugin's own lock; the reload's background install then finds
+    # it current. Unattended runs leave it to that background install.
+    if [ -n "$interactive" ]; then
+      (
+        tmux wait-for -L agenmux-install || exit 1
+        rc=0
+        bash "$DIR/scripts/install-bin.sh" || rc=$?
+        tmux wait-for -U agenmux-install
+        exit "$rc"
+      ) </dev/null >/dev/null 2>&1 &
+      job=$!
+      i=0
+      while kill -0 "$job" 2>/dev/null; do
+        i=$(((i + 1) % 10))
+        frame="$(printf '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏' | cut -b"$((i * 3 + 1))-$((i * 3 + 3))")"
+        printf '\r  %s%s%s %-10s %s' "$dim" "$frame" "$reset" engine "installing (a source build can take a few minutes)"
+        sleep 0.1
+      done
+      printf '\r\033[K'
+      if wait "$job"; then
+        ok engine "installed $(version)"
+      else
+        skip engine "not installed; the first toggle retries (see README › Troubleshooting)"
+      fi
+    fi
     tmux source-file "$CONF" || die "tmux rejected $(tilde "$CONF"); fix the error above and run: tmux source-file $(tilde "$CONF")"
-    ok tmux "reloaded; the engine downloads now, the first toggle waits for it"
+    if [ -n "$interactive" ]; then
+      ok tmux "reloaded"
+    else
+      ok tmux "reloaded; the engine installs in the background"
+    fi
   else
     ok tmux "not running; the engine downloads on first start"
   fi

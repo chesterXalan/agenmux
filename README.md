@@ -34,10 +34,16 @@ curl -fsSL https://snirt.github.io/agenmux/install.sh | sh
 ```
 
 The script clones the plugin to `~/.tmux/plugins/agenmux`, creates
-`~/.config/agenmux/agents/`, asks for the launcher keys (default `prefix + A`
+`~/.config/agenmux/agents/`, shows a Nerd Font sample and asks whether it
+renders (yes sets `display.agent_label = "icon"`, no sets `"text"`; an existing
+`agent_label` is kept, and `AGENMUX_AGENT_LABEL` answers without a prompt),
+asks for the launcher keys (default `prefix + A`
 sidebar, `prefix + a` popup), shows the lines it wants in your tmux.conf (a
 `@plugin` entry if you use TPM, `run-shell` otherwise), writes them once you
-confirm, and reloads tmux. Run it again to update; an existing agenmux entry
+confirm, and reloads tmux. When tmux is running, it first installs the native
+engine with a progress indicator, so the first toggle opens at once; otherwise
+the engine installs in the background when tmux starts. Run it again to
+update; an existing agenmux entry
 is left alone.
 
 Or install with [TPM](https://github.com/tmux-plugins/tpm) directly:
@@ -61,8 +67,9 @@ Clone the repo and add `run-shell /path/to/agenmux/agenmux.tmux` to
 Requirements: tmux and bash for TPM/bootstrap. `curl` and `tar` enable the
 automatic native download; without them, Cargo builds it when available. No
 required build step on a supported release platform. A Nerd Font is recommended
-for private-use UI icons; the interactive installer prints a visual font check and
-warns what to do when its sample icon appears as a box or blank.
+for private-use UI icons; the interactive installer prints a visual font check,
+warns what to do when its sample icon appears as a box or blank, and picks the
+agent row label from your answer.
 
 ### Upgrading from agents-mon
 
@@ -86,8 +93,19 @@ notification permission again because the bundle identity changed.
 ## Usage
 
 Press `prefix + A` to open the left sidebar or enter navigation when it is
-already open. By default, agents are grouped by session in tmux window order
-and refresh every two seconds.
+already open. By default, the sidebar is a tmux manager: every session, window,
+and pane in tmux order, with agent status inline, refreshed every two seconds.
+Create, rename, and delete actions are on, and deletes ask for confirmation.
+For the previous agent-only, read-only sidebar, set:
+
+```toml
+[display]
+show_all_panes = false
+[tmux_management]
+enabled = false
+```
+
+Each setting works independently.
 
 | Input | Action |
 | --- | --- |
@@ -117,9 +135,9 @@ During search, type normally, then press `Enter` to accept the query and restore
 leaving search. User attention and text filters are mutually exclusive. Matching a
 session keeps all its agents visible as context.
 
-Set `display.show_all_panes = true` in the application configuration to turn the
-sidebar into a complete tmux navigator. The default is `false`, which preserves
-the agent-only list. Press `.` in the sidebar to toggle between the two live;
+`display.show_all_panes` defaults to `true`, making the sidebar a complete tmux
+navigator; set it to `false` for the agent-only list. Press `.` in the sidebar
+to toggle between the two live;
 that view toggle is not written to config, so a reload restores the configured
 default. All-pane mode renders sessions, windows, and panes in tmux
 order. A pane in a split window shows its pane title when set, otherwise its
@@ -149,7 +167,8 @@ without a Nerd Fonts glyph use plain text: `Pı` for Pi and Oh My Pi (the logo's
 dotless i), `OC` for OpenCode (its own title prefix), and `⚕` for Hermes. The text name
 always follows the icon by default, so a missing glyph never hides which agent a row is.
 `display.agent_label` picks `icon-text` (default), `icon`, or `text`; an agent
-without an icon always shows its name.
+without an icon always shows its name. The interactive installer sets it from its
+font check: `icon` when the sample renders, `text` when it does not.
 
 Search in all-pane mode matches session, window, and pane metadata. A session or
 window match keeps its pane subtree, while a pane match keeps its session and
@@ -233,7 +252,7 @@ otherwise `$HOME/.config/agenmux/config.toml` (absolute HOME):
 version = 1
 [display]
 mode = "split"
-show_all_panes = false
+show_all_panes = true # false: agent-only list
 show_frame = true # whole-pane Agenmux frame
 sidebar_width = 30
 popup_width = 40
@@ -242,6 +261,9 @@ agent_label = "icon-text" # icon-text | icon | text
 [behavior]
 notifications = true
 # hide_windows = "agents*" # omitted: leave your picker alone
+[tmux_management]
+enabled = true # false: read-only sidebar
+confirm_delete = true
 ```
 
 `agenmux config --help` prints every configurable key with its accepted values
@@ -319,7 +341,8 @@ each chord to a fixed internal action, never to a command from the file.
 `agenmux config reload` reinstalls the tables and updates the hints of running
 views; the next toggle does the same for the tables on its own.
 
-Tmux mutations are opt-in. With management enabled, the built-ins are `cc`
+Tmux mutations are enabled by default; set `tmux_management.enabled = false` to
+turn them off. With management enabled, the built-ins are `cc`
 (create a window in the selected pane's session), `cs` (create a session), `dd`
 (delete the selected record), and `r` (rename). `gg` remains available regardless
 of this setting. With management on, session rows and multi-pane window rows
@@ -337,12 +360,13 @@ sidebar key table. Mutation prompts accept input only from that invoking client.
 The delete confirmation is inline: the hint row shows the record's name and
 stable tmux ID and cancels on Enter, `n`, Escape, or any input other than
 lowercase `y`. Window and pane deletes refuse to implicitly destroy a session;
-delete the session row so attached clients can be moved safely first. Set
-`confirm_delete = false` only if immediate deletion is intentional.
+delete the session row so attached clients can be moved safely first.
+Confirmation stays on by default; set `confirm_delete = false` only if immediate
+deletion is intentional.
 
 ```toml
 [tmux_management]
-enabled = false       # required for every create/delete sequence
+enabled = true        # false disables every create/delete/rename sequence
 confirm_delete = true
 
 [keys]
@@ -356,7 +380,7 @@ revalidates tmux pane/window/session IDs before mutation; a stale target reports
 error and refreshes instead of falling back to another resource. Pane splitting is
 not part of tmux management.
 
-With tmux management enabled, `e` opens nvim and `og` opens lazygit in a new
+With tmux management enabled, `oe` opens nvim and `og` opens lazygit in a new
 window at the selected pane's working directory. Press `o` to see the optional
 launcher sequences. The new window is focused in the invoking client, and the
 sidebar refreshes to include it. The built-ins can be changed or disabled, and
@@ -364,7 +388,7 @@ custom launchers can be added:
 
 ```toml
 [quick_launchers.nvim]
-sequence = "e"
+sequence = "oe"
 label = "nvim"
 command = "nvim"
 args = []
@@ -653,8 +677,8 @@ The OCI harness accepts Docker or Podman (override detection with
 the exact checkout and tmux 3.7b, then runs the release and real-tmux sanity
 checks. `container-use` bind-mounts the current checkout, builds
 it in an isolated target directory, and attaches to a disposable tmux session
-starting in a real shell with a mock Codex agent in a second window. The harness
-enables tmux management; press `prefix + A` to exercise the sidebar, then use
+starting in a real shell with a mock Codex agent in a second window. Press
+`prefix + A` to exercise the sidebar, then use
 `cc` for a window or `cs` for a session. `container-install` instead starts a
 clean disposable HOME and runs the public website installer in its shell so its
 prompts, clone, binary verification, tmux.conf update, and reload can be exercised

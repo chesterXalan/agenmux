@@ -47,9 +47,6 @@ use)
   export XDG_STATE_HOME="$harness/state"
   export TERM="${TERM:-xterm-256color}"
   prepare_tmux_conf
-  mkdir -p "$XDG_CONFIG_HOME/agenmux"
-  printf '[tmux_management]\nenabled = true\n' \
-    >"$XDG_CONFIG_HOME/agenmux/config.toml"
   tmux -L "$socket" -f "$tmux_conf" new-session -d -s agenmux -n shell \
     -x 120 -y 40 -c "$workspace" /bin/bash
   tmux -L "$socket" new-window -d -t agenmux: -n mock-agent \
@@ -102,9 +99,6 @@ install | install-local)
   export XDG_STATE_HOME="$harness/state"
   export TERM="${TERM:-xterm-256color}"
   prepare_tmux_conf
-  mkdir -p "$XDG_CONFIG_HOME/agenmux"
-  printf '[tmux_management]\nenabled = true\n' \
-    >"$XDG_CONFIG_HOME/agenmux/config.toml"
   tmux -L "$socket" -f "$tmux_conf" new-session -d -s agenmux -n shell \
     -x 120 -y 40 -c "$HOME" /bin/bash
   tmux -L "$socket" new-window -d -t agenmux: -n mock-agent \

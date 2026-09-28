@@ -329,6 +329,11 @@ has_line "$(cat "$HOME/.tmux.conf")" 'run-shell "~/.tmux/plugins/agenmux/agenmux
 [ -d "$XDG_CONFIG_HOME/agenmux/agents" ]
 has "$(tmux -L "$install_socket" list-keys -T prefix)" '/agenmux.tmux'
 has "$install_out" 'reloaded'
+# The reload no longer blocks on the engine install; wait for its lock so the
+# checkout is not removed mid-build. The pause lets the background job take it.
+sleep 1
+tmux -L "$install_socket" wait-for -L agenmux-install
+tmux -L "$install_socket" wait-for -U agenmux-install
 tmux -L "$install_socket" kill-server
 active_socket=""
 rm -rf "$HOME/.tmux" "$HOME/.tmux.conf"
@@ -351,12 +356,15 @@ wizard() { # answers...
 }
 mkdir -p "$root/no-server"
 wizard '
+    expect "show as an icon" { send "n\r" }
     expect "Sidebar toggle" { send "\r" }
     expect "Popup toggle" { send "\r" }
     expect "Add them to" { send "n\r" }
 '
 [ ! -s "$HOME/.tmux.conf" ]
+has_line "$(cat "$XDG_CONFIG_HOME/agenmux/config.toml")" 'agent_label = "text"'
 wizard '
+    expect "show as an icon" { send "\r" }
     expect "Sidebar toggle" { send "C g\r" }
     expect "one key name" {}
     expect "Sidebar toggle" { send "C-g\r" }
@@ -367,7 +375,7 @@ has_line "$(cat "$HOME/.tmux.conf")" "set -g @agenmux-key 'C-g'"
 has_line "$(cat "$HOME/.tmux.conf")" "set -g @agenmux-popup-key 'F5'"
 has_line "$(cat "$HOME/.tmux.conf")" 'run-shell "~/.tmux/plugins/agenmux/agenmux.tmux"'
 [ "$(wc -l <"$HOME/.tmux.conf")" -eq 3 ]
-rm -rf "$HOME/.tmux" "$HOME/.tmux.conf"
+rm -rf "$HOME/.tmux" "$HOME/.tmux.conf" "$XDG_CONFIG_HOME/agenmux/config.toml"
 printf 'ok   installer prompts: decline leaves conf empty, custom keys written once\n'
 
 phase=$SECONDS

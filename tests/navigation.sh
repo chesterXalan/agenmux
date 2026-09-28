@@ -51,7 +51,7 @@ tmp="$(mktemp -d "${TMPDIR:-/tmp}/agenmux-navigation.XXXXXX")"
 export XDG_CONFIG_HOME="$tmp/xdg"
 export XDG_STATE_HOME="$tmp/state"
 mkdir -p "$XDG_CONFIG_HOME/agenmux"
-printf '[keys.normal]\nup = ["K"]\n' >"$XDG_CONFIG_HOME/agenmux/config.toml"
+printf '[display]\nshow_all_panes = false\n[tmux_management]\nenabled = false\n[keys.normal]\nup = ["K"]\n' >"$XDG_CONFIG_HOME/agenmux/config.toml"
 sock="$tmp/sock"
 input="$tmp/client-input"
 client_pid=''
@@ -191,7 +191,7 @@ done
   exit 1
 }
 
-printf '[tmux_management]\nenabled = true\n[keys.normal]\nup = ["K"]\n' >"$XDG_CONFIG_HOME/agenmux/config.toml"
+printf '[display]\nshow_all_panes = false\n[tmux_management]\nenabled = true\n[keys.normal]\nup = ["K"]\n' >"$XDG_CONFIG_HOME/agenmux/config.toml"
 env TMPDIR="$tmp" TMUX="$sock,$server_pid,0" AGENMUX_DIR="$DIR" \
   "$BIN" config reload >/dev/null
 sleep 2.2
@@ -269,7 +269,7 @@ windows_after="$(tmux -S "$sock" list-windows -a -F '#{window_id}' | wc -l | tr 
   echo "FAIL navigation-key-table: cancelling dd deleted a window"
   exit 1
 }
-printf '[keys.normal]\nup = ["K"]\n' >"$XDG_CONFIG_HOME/agenmux/config.toml"
+printf '[display]\nshow_all_panes = false\n[tmux_management]\nenabled = false\n[keys.normal]\nup = ["K"]\n' >"$XDG_CONFIG_HOME/agenmux/config.toml"
 env TMPDIR="$tmp" TMUX="$sock,$server_pid,0" AGENMUX_DIR="$DIR" \
   "$BIN" config reload >/dev/null
 sleep 0.1
@@ -1106,7 +1106,7 @@ done
 # rename itself without the sidebar being reopened.
 printf 'f' >&9
 reload_hint_follows=0
-printf '[display]\nshow_all_panes = true\n[keys.normal]\nup = ["Z"]\n' >"$XDG_CONFIG_HOME/agenmux/config.toml"
+printf '[display]\nshow_all_panes = true\n[tmux_management]\nenabled = false\n[keys.normal]\nup = ["Z"]\n' >"$XDG_CONFIG_HOME/agenmux/config.toml"
 env TMPDIR="$tmp" TMUX="$sock,$server_pid,0" AGENMUX_DIR="$DIR" \
   "$BIN" config reload >/dev/null 2>&1 || true
 for _ in $(seq 1 40); do
@@ -1231,7 +1231,7 @@ printf '\033[<0;%d;%dm' "$mouse_x" "$mouse_y" >&9
 tmux -S "$sock" kill-pane -t "$ordinary_target"
 tmux -S "$sock" switch-client -c "$client" -t "$sidebar"
 tmux -S "$sock" switch-client -c "$client" -T agenmux
-printf '[display]\nshow_all_panes = false\n[keys.normal]\nup = ["Z"]\n' \
+printf '[display]\nshow_all_panes = false\n[tmux_management]\nenabled = false\n[keys.normal]\nup = ["Z"]\n' \
   >"$XDG_CONFIG_HOME/agenmux/config.toml"
 env TMPDIR="$tmp" TMUX="$sock,$server_pid,0" AGENMUX_DIR="$DIR" \
   "$BIN" config reload >/dev/null

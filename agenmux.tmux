@@ -117,7 +117,8 @@ fi
 
 # The source checkout has no binary, so eagerly install the default in the
 # background. The activation entrypoint takes the same lock when first use
-# beats it.
+# beats it. The job must not hold run-shell's output open: tmux waits for EOF,
+# which would stall tmux startup and source-file for the whole download/build.
 if [ "$BIN" = "$DEFAULT_BIN" ] \
    && [ "${AGENMUX_INSTALL_REFRESH:-}" != 1 ]; then
   (
@@ -136,5 +137,5 @@ if [ "$BIN" = "$DEFAULT_BIN" ] \
     if engine_current; then
       AGENMUX_INSTALL_REFRESH=1 bash "$CURRENT_DIR/agenmux.tmux"
     fi
-  ) &
+  ) </dev/null >/dev/null 2>&1 &
 fi

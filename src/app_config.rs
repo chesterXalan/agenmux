@@ -805,7 +805,7 @@ fn default_quick_launchers() -> BTreeMap<String, QuickLauncher> {
             "nvim".into(),
             QuickLauncher {
                 id: "nvim".into(),
-                sequence: "e".into(),
+                sequence: "oe".into(),
                 label: "nvim".into(),
                 command: "nvim".into(),
                 args: Vec::new(),
@@ -1092,7 +1092,7 @@ fn validate(config: &FileConfig) -> Result<(), ConfigError> {
         .tmux_management
         .as_ref()
         .and_then(|management| management.enabled)
-        .unwrap_or(false);
+        .unwrap_or(true);
     let (launchers, _) = resolve_quick_launchers(config.quick_launchers.as_ref())?;
     let normal = resolved_keys(KeyMode::Normal, k.and_then(|k| k.normal.as_ref()))?;
     validate_quick_launcher_conflicts(&launchers, management_enabled, &normal)?;
@@ -1225,10 +1225,10 @@ pub fn resolve_cli(
     );
     let mut result = AppConfig {
         sequence_timeout_ms: 1000,
-        tmux_management_enabled: false,
+        tmux_management_enabled: true,
         tmux_management_confirm_delete: true,
         mode: DisplayMode::Split,
-        show_all_panes: false,
+        show_all_panes: true,
         show_frame: true,
         agent_label: AgentLabel::IconText,
         sidebar_width: 30,
@@ -1656,7 +1656,7 @@ tmux option still wins over the file.
 
 [display]
   mode            split | popup                       (split)
-  show_all_panes  true | false                        (false)
+  show_all_panes  true | false                        (true)
   show_frame      true | false                        (true)
   sidebar_width   1..=10000 cells                     (30)
   popup_width     1..=10000 cells                     (40)
@@ -1668,7 +1668,7 @@ tmux option still wins over the file.
   hide_windows    glob for the prefix+w picker        (unset: picker untouched)
 
 [tmux_management]
-  enabled         true | false                        (false)
+  enabled         true | false                        (true)
   confirm_delete  true | false                        (true)
 
 [quick_launchers.<id>]
@@ -2347,19 +2347,32 @@ mod tests {
     fn defaults_and_empty_layer_semantics() {
         let empty = parse("").unwrap();
         let default = resolve(&empty, &BTreeMap::new()).unwrap();
-        assert!(!default.show_all_panes);
+        assert!(default.show_all_panes);
         assert!(default.show_frame);
         assert_eq!(default.sequence_timeout_ms, 1000);
-        assert!(!default.tmux_management_enabled);
+        assert!(default.tmux_management_enabled);
         assert!(default.tmux_management_confirm_delete);
         let management =
             parse("[tmux_management]\nenabled = true\nconfirm_delete = false").unwrap();
         let management = resolve(&management, &BTreeMap::new()).unwrap();
         assert!(management.tmux_management_enabled);
         assert!(!management.tmux_management_confirm_delete);
+        // Each opt-out is independent, and disabling management keeps the
+        // delete confirmation default.
+        let read_only = parse("[tmux_management]\nenabled = false").unwrap();
+        let read_only = resolve(&read_only, &BTreeMap::new()).unwrap();
+        assert!(!read_only.tmux_management_enabled);
+        assert!(read_only.show_all_panes);
+        assert!(read_only.tmux_management_confirm_delete);
+        let agents_only = parse("[display]\nshow_all_panes = false").unwrap();
+        let agents_only = resolve(&agents_only, &BTreeMap::new()).unwrap();
+        assert!(!agents_only.show_all_panes);
+        assert!(agents_only.tmux_management_enabled);
+        assert!(agents_only.tmux_management_confirm_delete);
         let effective = rows(&default);
         for (name, value) in [
-            ("tmux_management.enabled", "false"),
+            ("display.show_all_panes", "true"),
+            ("tmux_management.enabled", "true"),
             ("tmux_management.confirm_delete", "true"),
             ("keys.sequence_timeout_ms", "1000"),
         ] {
@@ -2371,10 +2384,7 @@ mod tests {
         let timeout = resolve(&timeout, &BTreeMap::new()).unwrap();
         assert_eq!(timeout.sequence_timeout_ms, 250);
         assert_eq!(timeout.sources["keys.sequence_timeout_ms"], "file");
-        let enabled = parse("[display]\nshow_all_panes = true").unwrap();
-        let enabled = resolve(&enabled, &BTreeMap::new()).unwrap();
-        assert!(enabled.show_all_panes);
-        assert_eq!(enabled.sources["display.show_all_panes"], "file");
+        assert_eq!(agents_only.sources["display.show_all_panes"], "file");
         let framed = parse("[display]\nshow_frame = false").unwrap();
         let framed = resolve(&framed, &BTreeMap::new()).unwrap();
         assert!(!framed.show_frame);
@@ -2863,7 +2873,7 @@ clear = ["C-u"]
             .iter()
             .find(|launcher| launcher.id == "nvim")
             .unwrap();
-        assert_eq!(nvim.sequence, "e");
+        assert_eq!(nvim.sequence, "oe");
         assert_eq!(nvim.command, "nvim");
         assert_eq!(nvim.working_directory, LauncherWorkingDirectory::Selected);
         let lazygit = defaults
@@ -2899,7 +2909,7 @@ working_directory = "tmux"
             .unwrap();
         assert_eq!(nvim.command, "/tmp/tool box/editor");
         assert_eq!(nvim.args, ["--wait", "a'b"]);
-        assert_eq!(nvim.sequence, "e");
+        assert_eq!(nvim.sequence, "oe");
         assert_eq!(nvim.working_directory, LauncherWorkingDirectory::Selected);
         assert_eq!(config.sources["quick_launchers.nvim.command"], "file");
         assert_eq!(config.sources["quick_launchers.nvim.sequence"], "default");
@@ -2924,7 +2934,7 @@ working_directory = "tmux"
                 "/tmp/tool box/editor",
                 "file",
             ),
-            ("quick_launchers.nvim.sequence", "e", "default"),
+            ("quick_launchers.nvim.sequence", "oe", "default"),
             ("quick_launchers.nvim.args", "[\"--wait\", \"a'b\"]", "file"),
             ("quick_launchers.lazygit.enabled", "false", "file"),
             ("quick_launchers.terminal.working_directory", "tmux", "file"),
@@ -2951,14 +2961,14 @@ working_directory = "tmux"
 
         // Conflicts are checked only when the management gate makes the
         // sequence active. The same file remains valid while launchers are off.
-        let colliding = "[quick_launchers.nvim]\nsequence='u'\n";
+        let colliding = "[tmux_management]\nenabled=false\n[quick_launchers.nvim]\nsequence='u'\n";
         assert!(parse(colliding).is_ok());
         for source in [
-            "[tmux_management]\nenabled=true\n[quick_launchers.nvim]\nsequence='u'",
+            "[quick_launchers.nvim]\nsequence='u'",
             "[tmux_management]\nenabled=true\n[quick_launchers.nvim]\nsequence='G'",
             "[tmux_management]\nenabled=true\n[quick_launchers.nvim]\nsequence='gg'",
             "[tmux_management]\nenabled=true\n[quick_launchers.nvim]\nsequence='e'\n[quick_launchers.lazygit]\nsequence='et'",
-            "[tmux_management]\nenabled=true\n[keys.normal]\ndown=['e']",
+            "[tmux_management]\nenabled=true\n[keys.normal]\ndown=['o']",
         ] {
             assert!(parse(source).is_err(), "accepted active conflict: {source}");
         }

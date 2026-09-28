@@ -1052,7 +1052,9 @@ fn setup_resolves_legacy_options_without_copying_behavior() {
             .join(" ")
     };
     assert_eq!(row("display.sidebar_width"), "50 tmux @agenmux-width");
-    assert_eq!(row("display.show_all_panes"), "false default");
+    assert_eq!(row("display.show_all_panes"), "true default");
+    assert_eq!(row("tmux_management.enabled"), "true default");
+    assert_eq!(row("tmux_management.confirm_delete"), "true default");
     assert_eq!(
         row("behavior.notifications"),
         "false tmux @agents-mon-notifications"
@@ -2113,7 +2115,7 @@ fn default_header_inherits_tmux_active_border_contrast() {
 fn daemon_theme_is_a_startup_snapshot_without_global_color_mutation() {
     for base in ["light", "terminal"] {
         let tmux = TestTmux::new(&format!("theme-{base}"));
-        app_file(&tmux, &format!("[theme]\nbase='{base}'\n[theme.colors]\nheader_fg='#123456'\nheader_bg='default'\nmuted_fg=99\n[behavior]\nnotifications=false"));
+        app_file(&tmux, &format!("[theme]\nbase='{base}'\n[theme.colors]\nheader_fg='#123456'\nheader_bg='default'\nmuted_fg=99\n[display]\nshow_all_panes=false\n[behavior]\nnotifications=false"));
         tmux.assert_tmux(&[
             "set-option",
             "-g",
@@ -2369,6 +2371,45 @@ fn tmux_management_creates_and_deletes_stable_targets() {
         ]),
         cwd.canonicalize().unwrap().to_string_lossy()
     );
+    tmux.wait_for(Duration::from_secs(4), || selected() == window_pane);
+
+    // A blank name keeps tmux's automatic naming, taken from the real pane
+    // rather than the focused sidebar running the agenmux binary.
+    send_sequence("cc");
+    tmux.wait_for(Duration::from_secs(4), || {
+        client_value("#{client_key_table}") == "agenmux-search"
+    });
+    assert_success(tmux.bin(&["key", "enter"]), "accept blank window name");
+    tmux.wait_for(Duration::from_secs(4), || {
+        tmux.text(&["list-windows", "-a", "-F", "#{window_id}"])
+            .lines()
+            .count()
+            == windows + 2
+    });
+    assert_on_sidebar();
+    let blank_window = client_value("#{window_id}");
+    let blank_pane = tmux.text(&[
+        "list-panes",
+        "-t",
+        &blank_window,
+        "-f",
+        "#{!=:#{pane_title},agenmux}",
+        "-F",
+        "#{pane_id}",
+    ]);
+    // tmux re-evaluates automatic names about every 500 ms.
+    thread::sleep(Duration::from_millis(1500));
+    assert_eq!(
+        client_value("#{window_name}"),
+        tmux.text(&[
+            "display-message",
+            "-p",
+            "-t",
+            &blank_pane,
+            "#{pane_current_command}"
+        ])
+    );
+    tmux.assert_tmux(&["kill-window", "-t", &blank_window]);
     tmux.wait_for(Duration::from_secs(4), || selected() == window_pane);
 
     let sessions = tmux
