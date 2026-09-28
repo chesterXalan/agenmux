@@ -1,7 +1,8 @@
 # Sidebar visual hierarchy and accessibility (#142)
 
-Goal: selection, state, hierarchy, and previews stay readable without color,
-with the same compact layout and no new metadata.
+Goal: selection, hierarchy, and previews stay readable without color, with
+the same compact layout and no new metadata. Status keeps its existing glyphs:
+working animates, but blocked and done still differ by color alone.
 
 ## Decisions
 
@@ -11,7 +12,8 @@ with the same compact layout and no new metadata.
 - **Collapse (#118):** headers are cursor stops in all-pane mode whether or
   not tmux management is on. `Space` or a click on the selected header
   toggles; `h`/`Left` collapses or steps to the parent header; `Right`,
-  or `l`/`Enter` on a header, expands (on a pane they still jump); `z`/`Z` fold or unfold everything. These keys are fixed defaults,
+  or `l`/`Enter` on a header, expands (on a pane, or while filtering, they
+  jump); `z`/`Z` fold or unfold everything. These keys are fixed defaults,
   like `G` and `.`, and a configured chord wins. State is a daemon-lifetime
   set of session/window ids. Filtering ignores it without changing it, and a
   hidden selection falls back to its nearest visible header. A collapsed
@@ -20,8 +22,7 @@ with the same compact layout and no new metadata.
   width, so it adds no glyph or count; the attention filter lists them all.
 - **Unclaimed keys:** tmux's `Any` binding now sends a no-op protocol byte
   instead of Space, which toggles a branch.
-- **Status glyphs:** unchanged. Blocked keeps its blinking red `⣿` (a trial
-  `!` glyph was reverted).
+- **Status glyphs:** unchanged. Blocked keeps its blinking red `⣿`.
 - **Muted text:** muted styling drops SGR dim. The dark base defaults
   `muted_fg` to 256-color 245. Light and terminal bases keep their explicit
   values, and a configured `muted_fg` renders exactly as set.

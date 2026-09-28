@@ -131,7 +131,7 @@ as agent panes.
 
 Session and split-window headers are collapsible branches: `▼` open, `▶` collapsed. `Space`
 or a click on the selected header toggles a branch; `h`/`←` collapses it, or steps from a pane
-to its parent header; `→`, `l`, or `Enter` on a header expands it (on a pane they jump); `z`/`Z` collapse or expand every branch. A collapsed header's
+to its parent header; `→`, `l`, or `Enter` on a header expands it (on a pane, or while filtering, they jump); `z`/`Z` collapse or expand every branch. A collapsed header's
 `▶` takes the color of the most urgent status among its hidden agents (blocked, then done,
 then working), blinking against the accent; it adds no width to the row. Collapse state lasts for the
 daemon's lifetime and survives rescans; search and the User attention filter show every match
