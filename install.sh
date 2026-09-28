@@ -212,17 +212,18 @@ $plugin"
   fi
 
   if tmux list-sessions >/dev/null 2>&1; then
-    # Install the engine here, where progress is visible, under the plugin's
-    # own lock; the reload's background install then finds it current.
-    (
-      tmux wait-for -L agenmux-install || exit 1
-      rc=0
-      bash "$DIR/scripts/install-bin.sh" || rc=$?
-      tmux wait-for -U agenmux-install
-      exit "$rc"
-    ) </dev/null >/dev/null 2>&1 &
-    job=$!
+    # With someone watching, install the engine here with visible progress,
+    # under the plugin's own lock; the reload's background install then finds
+    # it current. Unattended runs leave it to that background install.
     if [ -n "$interactive" ]; then
+      (
+        tmux wait-for -L agenmux-install || exit 1
+        rc=0
+        bash "$DIR/scripts/install-bin.sh" || rc=$?
+        tmux wait-for -U agenmux-install
+        exit "$rc"
+      ) </dev/null >/dev/null 2>&1 &
+      job=$!
       i=0
       while kill -0 "$job" 2>/dev/null; do
         i=$(((i + 1) % 10))
@@ -231,14 +232,18 @@ $plugin"
         sleep 0.1
       done
       printf '\r\033[K'
-    fi
-    if wait "$job"; then
-      ok engine "installed $(version)"
-    else
-      skip engine "not installed; the first toggle retries (see README › Troubleshooting)"
+      if wait "$job"; then
+        ok engine "installed $(version)"
+      else
+        skip engine "not installed; the first toggle retries (see README › Troubleshooting)"
+      fi
     fi
     tmux source-file "$CONF" || die "tmux rejected $(tilde "$CONF"); fix the error above and run: tmux source-file $(tilde "$CONF")"
-    ok tmux "reloaded"
+    if [ -n "$interactive" ]; then
+      ok tmux "reloaded"
+    else
+      ok tmux "reloaded; the engine installs in the background"
+    fi
   else
     ok tmux "not running; the engine downloads on first start"
   fi
