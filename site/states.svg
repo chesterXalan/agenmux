@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="202" viewBox="0 0 680 202" role="img" aria-labelledby="t">
+<title id="t">agenmux agent states: blocked (red, blinking), working (yellow spinner), done (green, blinking), idle (green)</title>
+<style>
+text{font:14px ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;fill:#c9c9c9}
+.b{font-weight:600;fill:#e6e6e6}
+.blink{animation:blink 1s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+.f{opacity:0;animation:spin .96s step-end infinite}
+.f0{opacity:1}
+@keyframes spin{0%{opacity:1}12.5%,100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.blink,.f{animation:none}}
+</style>
+<rect width="680" height="202" rx="8" fill="#121212"/>
+<rect x="12" y="12" width="656" height="40" rx="4" fill="rgb(32,12,12)"/>
+<g fill="#e0665c" class="blink"><circle cx="30" cy="23.0" r="2"/><circle cx="30" cy="29.0" r="2"/><circle cx="30" cy="35.0" r="2"/><circle cx="36" cy="23.0" r="2"/><circle cx="36" cy="29.0" r="2"/><circle cx="36" cy="35.0" r="2"/><circle cx="30" cy="41.0" r="2"/><circle cx="36" cy="41.0" r="2"/></g>
+<text x="60" y="37.0"><tspan class="b">blocked</tspan> — waiting for your input (permission prompt, menu)</text>
+<rect x="12" y="58" width="656" height="40" rx="4" fill="rgb(29,24,12)"/>
+<g fill="#d9b04c"><g class="f f0" style="animation-delay:0ms"><circle cx="30" cy="69.0" r="2"/><circle cx="36" cy="69.0" r="2"/><circle cx="36" cy="75.0" r="2"/><circle cx="36" cy="81.0" r="2"/></g><g class="f f1" style="animation-delay:120ms"><circle cx="36" cy="69.0" r="2"/><circle cx="36" cy="75.0" r="2"/><circle cx="36" cy="81.0" r="2"/><circle cx="36" cy="87.0" r="2"/></g><g class="f f2" style="animation-delay:240ms"><circle cx="36" cy="75.0" r="2"/><circle cx="36" cy="81.0" r="2"/><circle cx="30" cy="87.0" r="2"/><circle cx="36" cy="87.0" r="2"/></g><g class="f f3" style="animation-delay:360ms"><circle cx="30" cy="81.0" r="2"/><circle cx="36" cy="81.0" r="2"/><circle cx="30" cy="87.0" r="2"/><circle cx="36" cy="87.0" r="2"/></g><g class="f f4" style="animation-delay:480ms"><circle cx="30" cy="75.0" r="2"/><circle cx="30" cy="81.0" r="2"/><circle cx="30" cy="87.0" r="2"/><circle cx="36" cy="87.0" r="2"/></g><g class="f f5" style="animation-delay:600ms"><circle cx="30" cy="69.0" r="2"/><circle cx="30" cy="75.0" r="2"/><circle cx="30" cy="81.0" r="2"/><circle cx="30" cy="87.0" r="2"/></g><g class="f f6" style="animation-delay:720ms"><circle cx="30" cy="69.0" r="2"/><circle cx="30" cy="75.0" r="2"/><circle cx="30" cy="81.0" r="2"/><circle cx="36" cy="69.0" r="2"/></g><g class="f f7" style="animation-delay:840ms"><circle cx="30" cy="69.0" r="2"/><circle cx="30" cy="75.0" r="2"/><circle cx="36" cy="69.0" r="2"/><circle cx="36" cy="75.0" r="2"/></g></g>
+<text x="60" y="83.0"><tspan class="b">working</tspan> — actively running</text>
+<rect x="12" y="104" width="656" height="40" rx="4" fill="rgb(11,27,12)"/>
+<g fill="#6cb56c" class="blink"><circle cx="30" cy="115.0" r="2"/><circle cx="30" cy="121.0" r="2"/><circle cx="30" cy="127.0" r="2"/><circle cx="36" cy="115.0" r="2"/><circle cx="36" cy="121.0" r="2"/><circle cx="36" cy="127.0" r="2"/><circle cx="30" cy="133.0" r="2"/><circle cx="36" cy="133.0" r="2"/></g>
+<text x="60" y="129.0"><tspan class="b">done</tspan> — finished while you were elsewhere; clears when you view it</text>
+<rect x="12" y="150" width="656" height="40" rx="4" fill="rgb(11,27,12)"/>
+<g fill="#6cb56c"><circle cx="30" cy="161.0" r="2"/><circle cx="30" cy="167.0" r="2"/><circle cx="30" cy="173.0" r="2"/><circle cx="36" cy="161.0" r="2"/><circle cx="36" cy="167.0" r="2"/><circle cx="36" cy="173.0" r="2"/><circle cx="30" cy="179.0" r="2"/><circle cx="36" cy="179.0" r="2"/></g>
+<text x="60" y="175.0"><tspan class="b">idle</tspan> — waiting at the prompt</text>
+</svg>

@@ -18,7 +18,7 @@ Requirements: Rust 1.90 or newer, tmux, and bash for TPM/pre-binary bootstrap.
 ## Adding an agent
 
 Most contributions are new agents — and most need **no code**, just a `.conf`.
-See [Adding / overriding agents](README.md#adding--overriding-agents) for the
+See [Adding / overriding agents](docs/custom-agents.md) for the
 config format.
 
 1. Add `agents/<name>.conf`.
@@ -55,7 +55,7 @@ config format.
 - [ ] `cargo test` passes
 - [ ] `tests/run.sh` passes (includes `tests/no-stale-runtime-refs.sh`)
 - [ ] New/changed detection has a fixture behind it
-- [ ] README updated if you added an option or changed behavior
+- [ ] README or `docs/` updated if you added an option or changed behavior
 - [ ] One focused change per PR
 
 ## Releasing
