@@ -20,12 +20,12 @@ scripts/install-bin.sh:  [ -f "$source" ] || source="$pkg/target/release/agents-
 scripts/install-bin.sh:  for package in "agenmux-$platform" "tmux-agents-mon-$platform"; do
 scripts/install-bin.sh:LEGACY_STATE="$DIR/target/release/.agents-mon-version"
 scripts/install-bin.sh:REPO="${AGENMUX_REPO:-${AGENTS_MON_REPO:-https://github.com/snirt/agenmux}}"
-src/app_config.rs:                (format!("@agents-mon-{suffix}"), invalid.into()),
-src/app_config.rs:        options.insert("@agents-mon-popup-key".into(), "E".into());
-src/app_config.rs:        options.insert("@agents-mon-width".into(), "44".into());
-src/app_config.rs:        options.insert("@agents-mon-width".into(), "77".into());
-src/app_config.rs:    for prefix in ["@agenmux-", "@agents-mon-"] {
-src/app_config.rs:    for prefix in ["@agents-mon-", "@agenmux-"] {
+src/app_config/resolve.rs:                (format!("@agents-mon-{suffix}"), invalid.into()),
+src/app_config/resolve.rs:        options.insert("@agents-mon-popup-key".into(), "E".into());
+src/app_config/resolve.rs:        options.insert("@agents-mon-width".into(), "44".into());
+src/app_config/resolve.rs:        options.insert("@agents-mon-width".into(), "77".into());
+src/app_config/resolve.rs:    for prefix in ["@agenmux-", "@agents-mon-"] {
+src/app_config/resolve.rs:    for prefix in ["@agents-mon-", "@agenmux-"] {
 src/conf.rs:        config_home.join("tmux-agents-mon/agents"),
 src/diag.rs:        let path = crate::compat_env("AGENMUX_DEBUG", "AGENTS_MON_DEBUG")
 src/main.rs:    compat_env("AGENMUX_SELF", "AGENTS_MON_SELF").filter(|s| !s.is_empty())
