@@ -29,6 +29,21 @@ check fresh-conf "$(cat "$home/.tmux.conf")" \
   "$(printf "set -g @agenmux-key 'A'\nset -g @agenmux-popup-key 'a'\nrun-shell \"~/.tmux/plugins/agenmux/agenmux.tmux\"")"
 check clone "$([ -x "$home/.tmux/plugins/agenmux/agenmux.tmux" ] && echo yes)" yes
 check config-dir "$([ -d "$home/.config/agenmux/agents" ] && echo yes)" yes
+check command-link "$(readlink "$home/.local/bin/agenmux")" "$home/.tmux/plugins/agenmux/target/release/agenmux"
+
+# something else already at ~/.local/bin/agenmux is never replaced
+mv "$home/.local/bin/agenmux" "$home/link.bak"
+printf 'mine\n' >"$home/.local/bin/agenmux"
+sh "$DIR/install.sh" >/dev/null
+check command-foreign-kept "$(cat "$home/.local/bin/agenmux")" mine
+mv "$home/link.bak" "$home/.local/bin/agenmux"
+
+# a new link off PATH prints the line to add; on PATH it stays quiet
+rm "$home/.local/bin/agenmux"
+# shellcheck disable=SC2016 # matching the literal line the installer prints
+check command-path-hint "$(sh "$DIR/install.sh" | grep -c 'export PATH="$HOME/.local/bin:$PATH"')" 1
+rm "$home/.local/bin/agenmux"
+check command-path-quiet "$(PATH="$home/.local/bin:$PATH" sh "$DIR/install.sh" | grep -c 'not on PATH')" 0
 
 # Docker's wizard uses a writable config copy and must not update the mounted checkout.
 printf 'no-update\n' >"$home/src/no-update-marker"
