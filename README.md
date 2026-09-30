@@ -40,7 +40,9 @@ renders (yes sets `display.agent_label = "icon"`, no sets `"text"`; an existing
 asks for the launcher keys (default `prefix + A`
 sidebar, `prefix + a` popup), shows the lines it wants in your tmux.conf (a
 `@plugin` entry if you use TPM, `run-shell` otherwise), writes them once you
-confirm, and reloads tmux. When tmux is running, it first installs the native
+confirm, and reloads tmux. It also offers to symlink the `agenmux` command into
+`~/.local/bin` and prints the PATH line to add if that directory is not on
+your PATH. When tmux is running, it first installs the native
 engine with a progress indicator, so the first toggle opens at once; otherwise
 the engine installs in the background when tmux starts. Run it again to
 update; an existing agenmux entry
