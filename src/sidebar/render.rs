@@ -476,16 +476,21 @@ impl Sidebar {
             let _ = std::fs::rename(&staged, &self.rows_file);
         }
         let changed = force || frame != self.last_frame;
+        // Synchronized output: tmux reads a frame in PTY-sized pieces and can
+        // redraw between them, briefly showing the cursor on neither row.
+        // Split panes never hide the terminal cursor on their own; left
+        // visible, it hops across every redraw (cursor-trail shaders show it).
+        let synced = || format!("{E}[?2026h{E}[?25l{frame}{E}[?2026l");
         match &mut self.daemon {
             None => {
                 if changed {
-                    print!("{frame}");
+                    print!("{}", synced());
                     let _ = std::io::stdout().flush();
                 }
             }
             Some(d) => {
                 if changed {
-                    d.writers.emit(&frame);
+                    d.writers.emit(&synced());
                 }
             }
         }

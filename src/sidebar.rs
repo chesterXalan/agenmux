@@ -22,12 +22,16 @@ use std::time::{Duration, Instant};
 
 const PERIODIC_SCAN: Duration = Duration::from_secs(2);
 const OUTPUT_SCAN_MIN: Duration = Duration::from_millis(500);
+/// Scans block the loop for tens to hundreds of ms. Holding j/k leaves the key
+/// FIFO empty between repeats, so scans wait for a pause this long.
+const NAVIGATION_QUIET: Duration = Duration::from_millis(250);
 
 struct ScanSchedule {
     next_periodic: Instant,
     next_output_eligible: Instant,
     output_due: Option<Instant>,
     immediate: bool,
+    quiet_until: Instant,
 }
 
 impl ScanSchedule {
@@ -37,7 +41,12 @@ impl ScanSchedule {
             next_output_eligible: now,
             output_due: None,
             immediate: false,
+            quiet_until: now,
         }
+    }
+
+    fn observe_navigation(&mut self, now: Instant) {
+        self.quiet_until = now + NAVIGATION_QUIET;
     }
 
     fn observe_output(&mut self, now: Instant) {
@@ -50,6 +59,9 @@ impl ScanSchedule {
     }
 
     fn due(&self, now: Instant, cache_expiry: Option<Instant>) -> Option<bool> {
+        if now < self.quiet_until {
+            return None;
+        }
         (self.immediate
             || now >= self.next_periodic
             || self.output_due.is_some_and(|d| now >= d)
@@ -71,14 +83,16 @@ impl ScanSchedule {
     }
 
     fn next_deadline(&self, cache_expiry: Option<Instant>) -> Instant {
-        if self.immediate {
-            return Instant::now();
-        }
-        [Some(self.next_periodic), self.output_due, cache_expiry]
-            .into_iter()
-            .flatten()
-            .min()
-            .unwrap()
+        let deadline = if self.immediate {
+            Instant::now()
+        } else {
+            [Some(self.next_periodic), self.output_due, cache_expiry]
+                .into_iter()
+                .flatten()
+                .min()
+                .unwrap()
+        };
+        deadline.max(self.quiet_until)
     }
 }
 
@@ -683,6 +697,7 @@ fn event_loop(sb: &mut Sidebar) -> bool {
                     None
                 };
                 if let Some((target, direction)) = navigation_step {
+                    scans.observe_navigation(Instant::now());
                     if let Some(run) = NavigationRun::queue(&mut navigation, target, direction) {
                         run.apply(sb);
                     }
@@ -1831,6 +1846,21 @@ mod tests {
             DispatchMode::Overlay
         );
         assert_eq!(dispatch_mode(None, false), DispatchMode::Normal);
+    }
+
+    #[test]
+    fn held_navigation_defers_scans_until_a_pause() {
+        let start = Instant::now();
+        let mut schedule = ScanSchedule::new(start);
+        schedule.request_immediate();
+        for offset in [0, 30, 60] {
+            let now = start + Duration::from_millis(offset);
+            schedule.observe_navigation(now);
+            assert!(schedule.due(now, None).is_none());
+        }
+        let resume = start + Duration::from_millis(60) + NAVIGATION_QUIET;
+        assert_eq!(schedule.next_deadline(None), resume);
+        assert!(schedule.due(resume, None).is_some());
     }
 
     #[test]
