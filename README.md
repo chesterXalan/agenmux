@@ -20,6 +20,8 @@ when an agent needs you.
 
 Try the interactive demo on the [agenmux website](https://snirt.github.io/agenmux/).
 
+<img src="site/screenshot.png" width="402" alt="The agenmux sidebar in a real tmux setup: sessions grouped in tmux order, working Claude Code panes with their prompts, an idle Pi pane, and a plain zsh pane">
+
 ## Quick start
 
 ```sh
