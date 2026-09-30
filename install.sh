@@ -5,8 +5,9 @@
 # reloads a running tmux so
 # agenmux.tmux fetches the verified engine. Re-run to update. Override paths
 # with AGENMUX_DIR and AGENMUX_TMUX_CONF. Without a terminal (CI, containers)
-# every question takes its default: keys A and a, write yes, and the agent
-# label is left to config.toml unless AGENMUX_AGENT_LABEL names one.
+# every question takes its default: keys A and a, write yes, link the agenmux
+# command into ~/.local/bin, and the agent label is left to config.toml unless
+# AGENMUX_AGENT_LABEL names one.
 set -eu
 
 DIR="${AGENMUX_DIR:-$HOME/.tmux/plugins/agenmux}"
@@ -16,15 +17,16 @@ TPM="$HOME/.tmux/plugins/tpm"
 # colour only on a terminal; piped output (CI, logs) stays plain
 if [ -t 1 ] && [ "${TERM:-dumb}" != dumb ] && [ -z "${NO_COLOR:-}" ]; then
   bold="$(printf '\033[1m')" dim="$(printf '\033[2m')" green="$(printf '\033[32m')"
-  red="$(printf '\033[31m')" reset="$(printf '\033[0m')"
+  red="$(printf '\033[31m')" yellow="$(printf '\033[33m')" reset="$(printf '\033[0m')"
 else
-  bold="" dim="" green="" red="" reset=""
+  bold="" dim="" green="" red="" yellow="" reset=""
 fi
 # decided once here: inside $(...) stdout is a pipe, so the prompts cannot test it
 if [ -t 1 ] && [ -r /dev/tty ] && [ -w /dev/tty ]; then interactive=1; else interactive=""; fi
 tilde() { case "$1" in "$HOME"/*) printf '~%s' "${1#"$HOME"}" ;; *) printf '%s' "$1" ;; esac }
 ok() { printf '  %s✓%s %-10s %s\n' "$green" "$reset" "$1" "$2"; }
 skip() { printf '  %s-%s %-10s %s\n' "$dim" "$reset" "$1" "$2"; }
+warn() { printf '  %s!%s %-10s %s\n' "$yellow" "$reset" "$1" "$2"; }
 die() {
   printf '  %s✗%s %s\n' "$red" "$reset" "$1" >&2
   exit 1
@@ -144,6 +146,29 @@ main() {
       fi
       ok labels "agent_label = \"$label\" in $(tilde "$app")"
     fi
+  fi
+
+  # A symlink, not a copy, so engine updates reach the shell command. It may
+  # dangle until the engine lands; anything already at the path is left alone.
+  cmd_link="$HOME/.local/bin/agenmux"
+  engine="$DIR/target/release/agenmux"
+  if [ -L "$cmd_link" ] && [ "$(readlink "$cmd_link")" = "$engine" ]; then
+    skip command "$(tilde "$cmd_link") already links the engine"
+  elif [ -e "$cmd_link" ] || [ -L "$cmd_link" ]; then
+    skip command "$(tilde "$cmd_link") exists, left alone"
+  elif ask "Link the agenmux command into $(tilde "$HOME/.local/bin")?" y; then
+    { mkdir -p "$HOME/.local/bin" && ln -s "$engine" "$cmd_link"; } || die "cannot link $(tilde "$cmd_link")"
+    ok command "linked $(tilde "$cmd_link")"
+    case ":$PATH:" in
+    *":$HOME/.local/bin:"*) ;;
+    *)
+      warn PATH "~/.local/bin is not on PATH; add to your shell rc:"
+      # shellcheck disable=SC2016 # printed for the user's rc, not expanded here
+      printf '                 export PATH="$HOME/.local/bin:$PATH"\n'
+      ;;
+    esac
+  else
+    skip command "not linked"
   fi
 
   if [ -n "${AGENMUX_TMUX_CONF:-}" ]; then
